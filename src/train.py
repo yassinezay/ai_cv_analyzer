@@ -2,6 +2,7 @@
 train.py – Training functions for baseline (TF-IDF + LR) and deep learning (LSTM/GRU)
 """
 import os
+import copy
 import time
 import torch
 import torch.nn as nn
@@ -115,8 +116,14 @@ def train_deep(model, train_loader, val_loader, config: dict, device: str = "cpu
     history = {"train_loss": [], "val_loss": [], "train_acc": [], "val_acc": []}
     t0 = time.time()
 
+    patience    = config.get("patience", 0)   # 0 = disabled
+    best_val    = float("inf")
+    no_improve  = 0
+    best_state  = None
+
     print(f"\n[Train] {config['name']}  "
-          f"lr={config['lr']}  epochs={config['epochs']}")
+          f"lr={config['lr']}  epochs={config['epochs']}"
+          + (f"  patience={patience}" if patience else ""))
 
     for epoch in range(1, config["epochs"] + 1):
         tr_l, tr_a = _run_epoch(model, train_loader, criterion, optimizer, device, True)
@@ -131,6 +138,19 @@ def train_deep(model, train_loader, val_loader, config: dict, device: str = "cpu
         print(f"  Epoch {epoch:02d}/{config['epochs']}  "
               f"loss {tr_l:.4f}/{vl_l:.4f}  "
               f"acc  {tr_a:.4f}/{vl_a:.4f}")
+
+        # Early stopping
+        if patience > 0:
+            if vl_l < best_val - 1e-4:
+                best_val   = vl_l
+                no_improve = 0
+                best_state = copy.deepcopy(model.state_dict())
+            else:
+                no_improve += 1
+                if no_improve >= patience:
+                    print(f"  Early stopping at epoch {epoch} (no improvement for {patience} epochs)")
+                    model.load_state_dict(best_state)
+                    break
 
     history["train_time"] = time.time() - t0
     print(f"  Finished in {history['train_time']:.1f}s")

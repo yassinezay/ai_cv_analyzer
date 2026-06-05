@@ -26,6 +26,23 @@ JOB_CATEGORIES = [
     "INFORMATION-TECHNOLOGY", "PUBLIC-RELATIONS", "SALES", "TEACHER",
 ]
 
+# ── Weak classes merged into AUTRE (F1 < 0.40 on the full 24-class model) ───
+WEAK_CLASSES = [
+    "AGRICULTURE", "APPAREL", "ARTS", "AUTOMOBILE", "BPO", "FITNESS",
+]
+
+
+def remap_categories(df: pd.DataFrame, weak_classes: list = None) -> pd.DataFrame:
+    """Replace low-F1 categories with AUTRE so the model focuses on learnable classes."""
+    if weak_classes is None:
+        weak_classes = WEAK_CLASSES
+    df = df.copy()
+    df["Category"] = df["Category"].apply(
+        lambda c: "AUTRE" if c in weak_classes else c
+    )
+    return df
+
+
 # ── Skills taxonomy ─────────────────────────────────────────────────────────
 SKILLS_DB = {
     "Programming":    ["python", "java", "javascript", "typescript", "c++", "c#",
